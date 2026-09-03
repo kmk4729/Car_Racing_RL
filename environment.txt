@@ -1,0 +1,33 @@
+# Python: 3.11.5 (Anaconda distribution recommended, matches this machine's setup)
+#
+# Install order matters a bit because of CarRacing's Box2D dependency and
+# PyTorch's CUDA build. Recommended steps on the other desktop:
+#
+#   1) py -3 -m pip install -r environment.txt
+#   2) If box2d-py fails to build from source, install swig first:
+#        py -3 -m pip install swig
+#      then retry (or install a prebuilt wheel of box2d-py for your platform).
+#   3) torch below is the CUDA 12.1 build. If the other desktop has no NVIDIA
+#      GPU / CUDA 12.1 driver, replace the torch line with the CPU build:
+#        pip install torch==2.5.1 --index-url https://download.pytorch.org/whl/cpu
+#      or install a build matching that machine's CUDA version, see:
+#        https://pytorch.org/get-started/locally/
+
+--extra-index-url https://download.pytorch.org/whl/cu121
+torch==2.5.1+cu121
+
+numpy==1.24.3
+gymnasium==0.29.1
+box2d-py==2.3.5
+swig==4.2.1
+pygame==2.5.2
+
+opencv-python==4.8.1.78
+matplotlib==3.7.2
+imageio==2.26.0
+imageio-ffmpeg==0.6.0
+
+# Used by train_sac.py / visualize_sac.py (Jupyter-style display calls),
+# not strictly required by train_sac_parallel.py but harmless to include.
+ipython==8.15.0
+cloudpickle==2.2.1
