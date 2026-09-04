@@ -1,93 +1,42 @@
-[     0.0s] === PARALLEL TRAINING START (max_steps=2000000, N_ENVS=8) ===
-[     4.1s] agent device: cuda
-C:\Users\01079\kmk\Car_Racing_RL\train_sac_parallel.py:402: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+[     0.0s] === PARALLEL TRAINING START (max_steps=2000000, N_ENVS=8, max_no_progress_steps=50) ===
+[     4.3s] agent device: cuda
+C:\Users\01079\kmk\Car_Racing_RL\train_sac_parallel.py:430: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
   agent.actor.load_state_dict(torch.load(os.path.join(dir_path, 'sac_actor.pt'), map_location=agent.device))
-C:\Users\01079\kmk\Car_Racing_RL\train_sac_parallel.py:403: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+C:\Users\01079\kmk\Car_Racing_RL\train_sac_parallel.py:431: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
   agent.critic1.load_state_dict(torch.load(os.path.join(dir_path, 'sac_critic1.pt'), map_location=agent.device))
-C:\Users\01079\kmk\Car_Racing_RL\train_sac_parallel.py:404: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+C:\Users\01079\kmk\Car_Racing_RL\train_sac_parallel.py:432: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
   agent.critic2.load_state_dict(torch.load(os.path.join(dir_path, 'sac_critic2.pt'), map_location=agent.device))
-C:\Users\01079\kmk\Car_Racing_RL\train_sac_parallel.py:420: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+C:\Users\01079\kmk\Car_Racing_RL\train_sac_parallel.py:448: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
   state = torch.load(train_state_path, map_location=agent.device)
-[     4.1s] resumed from 'best' at total_steps=556000
-[     4.1s] applied lr=0.0001, fixed_alpha=0.05, buffer_size=15000, eval_interval=4000, n_evals=5
-[     4.1s] loaded existing best AvgReturn=905.348 from best\best_meta.json
+[     4.3s] resumed from 'best' at total_steps=556000
+[     4.3s] applied lr=0.0001, fixed_alpha=0.05, buffer_size=15000, eval_interval=4000, n_evals=5
+[     4.3s] loaded existing best AvgReturn=905.348 from best\best_meta.json
+[     4.3s] FRESH_HISTORY: moved previous curve to training_history_pretrain_1788524082.json; starting a clean fine-tune curve/plot
 [    17.4s] step 557000/2000000, buffer size 1000
-[    33.0s] step 558000/2000000, buffer size 2000
-[    47.8s] step 559000/2000000, buffer size 3000
-[    64.0s] step 560000/2000000, buffer size 4000
-[   102.0s] [checkpoint] step 560000 AvgReturn 875.728
-[   116.9s] step 561000/2000000, buffer size 5000
-[   133.1s] step 562000/2000000, buffer size 6000
-[   148.0s] step 563000/2000000, buffer size 7000
-[   167.1s] step 564000/2000000, buffer size 8000
-[   210.3s] [checkpoint] step 564000 AvgReturn 836.568
-[   229.1s] step 565000/2000000, buffer size 9000
-[   248.9s] step 566000/2000000, buffer size 10000
-[   266.2s] step 567000/2000000, buffer size 11000
-[   286.1s] step 568000/2000000, buffer size 12000
-[   335.0s] [checkpoint] step 568000 AvgReturn 859.320
-[   349.9s] step 569000/2000000, buffer size 13000
-[   366.7s] step 570000/2000000, buffer size 14000
-[   381.7s] step 571000/2000000, buffer size 15000
-[   398.2s] step 572000/2000000, buffer size 15000
-[   436.8s] [checkpoint] step 572000 AvgReturn 772.978
-[   452.5s] step 573000/2000000, buffer size 15000
-[   468.1s] step 574000/2000000, buffer size 15000
-[   484.9s] step 575000/2000000, buffer size 15000
-[   500.2s] step 576000/2000000, buffer size 15000
-[   536.9s] [checkpoint] step 576000 AvgReturn 728.143
-[   553.7s] step 577000/2000000, buffer size 15000
-[   569.6s] step 578000/2000000, buffer size 15000
-[   588.8s] step 579000/2000000, buffer size 15000
-[   603.9s] step 580000/2000000, buffer size 15000
-[   643.2s] [checkpoint] step 580000 AvgReturn 443.010
-[   661.4s] step 581000/2000000, buffer size 15000
-[   677.8s] step 582000/2000000, buffer size 15000
-[   695.5s] step 583000/2000000, buffer size 15000
-[   711.6s] step 584000/2000000, buffer size 15000
-[   752.8s] [checkpoint] step 584000 AvgReturn 803.322
-[   770.1s] step 585000/2000000, buffer size 15000
-[   785.7s] step 586000/2000000, buffer size 15000
-[   802.3s] step 587000/2000000, buffer size 15000
-[   818.4s] step 588000/2000000, buffer size 15000
-[   859.0s] [checkpoint] step 588000 AvgReturn 858.428
-[   876.4s] step 589000/2000000, buffer size 15000
-[   894.6s] step 590000/2000000, buffer size 15000
-[   912.8s] step 591000/2000000, buffer size 15000
-[   928.7s] step 592000/2000000, buffer size 15000
-[   966.9s] [checkpoint] step 592000 AvgReturn 803.099
-[   982.8s] step 593000/2000000, buffer size 15000
-[   999.1s] step 594000/2000000, buffer size 15000
-[  1014.5s] step 595000/2000000, buffer size 15000
-[  1031.6s] step 596000/2000000, buffer size 15000
-[  1069.0s] [checkpoint] step 596000 AvgReturn 782.402
-[  1084.7s] step 597000/2000000, buffer size 15000
-[  1102.1s] step 598000/2000000, buffer size 15000
-[  1117.6s] step 599000/2000000, buffer size 15000
-[  1135.3s] step 600000/2000000, buffer size 15000
-[  1180.0s] [checkpoint] step 600000 AvgReturn 712.073
-[  1196.9s] step 601000/2000000, buffer size 15000
-[  1217.5s] step 602000/2000000, buffer size 15000
-[  1237.5s] step 603000/2000000, buffer size 15000
-[  1257.2s] step 604000/2000000, buffer size 15000
-[  1300.8s] [checkpoint] step 604000 AvgReturn 552.987
-[  1320.9s] step 605000/2000000, buffer size 15000
-[  1341.7s] step 606000/2000000, buffer size 15000
-[  1364.8s] step 607000/2000000, buffer size 15000
-[  1384.3s] step 608000/2000000, buffer size 15000
-[  1428.3s] [checkpoint] step 608000 AvgReturn 355.544
-[  1448.6s] step 609000/2000000, buffer size 15000
-[  1464.4s] step 610000/2000000, buffer size 15000
-[  1481.8s] step 611000/2000000, buffer size 15000
-[  1497.6s] step 612000/2000000, buffer size 15000
-[  1538.5s] [checkpoint] step 612000 AvgReturn 630.442
-[  1556.5s] step 613000/2000000, buffer size 15000
-[  1573.5s] step 614000/2000000, buffer size 15000
-[  1592.3s] step 615000/2000000, buffer size 15000
-[  1610.4s] step 616000/2000000, buffer size 15000
-[  1649.6s] [checkpoint] step 616000 AvgReturn 710.493
-[  1667.1s] step 617000/2000000, buffer size 15000
-[  1684.1s] step 618000/2000000, buffer size 15000
-[  1701.6s] step 619000/2000000, buffer size 15000
-[  1718.3s] step 620000/2000000, buffer size 15000
-[  1759.1s] [checkpoint] step 620000 AvgReturn 828.983
+[    33.8s] step 558000/2000000, buffer size 2000
+[    48.5s] step 559000/2000000, buffer size 3000
+[    67.1s] step 560000/2000000, buffer size 4000
+[    98.0s] [checkpoint] step 560000 AvgReturn 519.977
+[   114.9s] step 561000/2000000, buffer size 5000
+[   135.1s] step 562000/2000000, buffer size 6000
+[   153.3s] step 563000/2000000, buffer size 7000
+[   173.8s] step 564000/2000000, buffer size 8000
+[   207.4s] [checkpoint] step 564000 AvgReturn 758.524
+[   224.1s] step 565000/2000000, buffer size 9000
+[   241.4s] step 566000/2000000, buffer size 10000
+[   257.6s] step 567000/2000000, buffer size 11000
+[   273.8s] step 568000/2000000, buffer size 12000
+[   309.3s] [checkpoint] step 568000 AvgReturn 820.857
+[   325.6s] step 569000/2000000, buffer size 13000
+[   341.7s] step 570000/2000000, buffer size 14000
+[   360.6s] step 571000/2000000, buffer size 15000
+[   378.3s] step 572000/2000000, buffer size 15000
+[   411.8s] [checkpoint] step 572000 AvgReturn 703.705
+[   428.6s] step 573000/2000000, buffer size 15000
+[   443.8s] step 574000/2000000, buffer size 15000
+[   460.4s] step 575000/2000000, buffer size 15000
+[   474.4s] step 576000/2000000, buffer size 15000
+[   505.9s] [checkpoint] step 576000 AvgReturn 766.026
+[   523.4s] step 577000/2000000, buffer size 15000
+[   538.9s] step 578000/2000000, buffer size 15000
+[   554.5s] step 579000/2000000, buffer size 15000
