@@ -217,6 +217,7 @@ class SAC:
         warmup_steps=1000,
         buffer_size=int(1e5),
         updates_per_batch=2,
+        fixed_alpha=None,
     ):
         self.action_dim = action_dim
         self.gamma = gamma
@@ -250,9 +251,19 @@ class SAC:
         self.critic1_optimizer = torch.optim.Adam(self.critic1.parameters(), lr)
         self.critic2_optimizer = torch.optim.Adam(self.critic2.parameters(), lr)
 
+        # SAC temperature. Normally auto-tuned toward target_entropy. Pass
+        # fixed_alpha to freeze it instead (used by the fine-tune phase in
+        # __main__ so exploration stops drifting once the policy is good).
         self.target_entropy = -float(action_dim)
-        self.log_alpha = torch.zeros(1, requires_grad=True, device=self.device)
-        self.alpha_optimizer = torch.optim.Adam([self.log_alpha], lr)
+        self.fixed_alpha = fixed_alpha
+        if fixed_alpha is None:
+            self.log_alpha = torch.zeros(1, requires_grad=True, device=self.device)
+            self.alpha_optimizer = torch.optim.Adam([self.log_alpha], lr)
+        else:
+            self.log_alpha = torch.full(
+                (1,), float(np.log(fixed_alpha)), device=self.device, requires_grad=False
+            )
+            self.alpha_optimizer = None
 
         self.replay_buffer = ReplayBuffer(state_dim, action_dim, buffer_size)
         self.total_steps = 0
@@ -260,6 +271,20 @@ class SAC:
     @property
     def alpha(self):
         return self.log_alpha.exp()
+
+    def set_lr(self, lr):
+        """Override the learning rate on every optimizer in place.
+
+        Needed after load_checkpoint(): that restores each optimizer's saved
+        state, which carries the LR it was trained with, so a fine-tune run
+        must re-assert its lower LR afterwards.
+        """
+        for opt in (self.actor_optimizer, self.critic1_optimizer,
+                    self.critic2_optimizer, self.alpha_optimizer):
+            if opt is None:
+                continue
+            for group in opt.param_groups:
+                group['lr'] = lr
 
     def select_action(self, state, training=True):
         """Single-state action selection (used by evaluate() / visualize_sac.py)."""
@@ -304,10 +329,11 @@ class SAC:
         actor_loss.backward()
         self.actor_optimizer.step()
 
-        alpha_loss = -(self.log_alpha * (log_prob + self.target_entropy).detach()).mean()
-        self.alpha_optimizer.zero_grad()
-        alpha_loss.backward()
-        self.alpha_optimizer.step()
+        if self.fixed_alpha is None:
+            alpha_loss = -(self.log_alpha * (log_prob + self.target_entropy).detach()).mean()
+            self.alpha_optimizer.zero_grad()
+            alpha_loss.backward()
+            self.alpha_optimizer.step()
 
         with torch.no_grad():
             for target_param, param in zip(self.critic1_target.parameters(), self.critic1.parameters()):
@@ -359,13 +385,16 @@ def save_checkpoint(agent, dir_path):
     # Optimizer momentum/variance state + step counter, so a resume can actually
     # continue training (not just warm-start the network weights from scratch
     # optimizer state, which tends to cause a transient loss/return spike).
-    torch.save({
+    train_state = {
         'actor_optimizer': agent.actor_optimizer.state_dict(),
         'critic1_optimizer': agent.critic1_optimizer.state_dict(),
         'critic2_optimizer': agent.critic2_optimizer.state_dict(),
-        'alpha_optimizer': agent.alpha_optimizer.state_dict(),
         'total_steps': agent.total_steps,
-    }, os.path.join(dir_path, 'sac_train_state.pt'))
+    }
+    # None when the temperature is frozen (fixed_alpha) -- nothing to persist.
+    if agent.alpha_optimizer is not None:
+        train_state['alpha_optimizer'] = agent.alpha_optimizer.state_dict()
+    torch.save(train_state, os.path.join(dir_path, 'sac_train_state.pt'))
 
 
 def load_checkpoint(agent, dir_path):
@@ -379,9 +408,12 @@ def load_checkpoint(agent, dir_path):
     # Copy into the *existing* log_alpha tensor in place rather than replacing
     # the attribute outright -- agent.alpha_optimizer already holds a reference
     # to the original tensor object, and swapping it out would desync them.
-    loaded_log_alpha = torch.load(os.path.join(dir_path, 'sac_log_alpha.pt'), map_location=agent.device)
-    with torch.no_grad():
-        agent.log_alpha.copy_(loaded_log_alpha)
+    # With a frozen temperature (agent.fixed_alpha set) we deliberately keep the
+    # pinned value and ignore whatever alpha the checkpoint was trained with.
+    if agent.fixed_alpha is None:
+        loaded_log_alpha = torch.load(os.path.join(dir_path, 'sac_log_alpha.pt'), map_location=agent.device)
+        with torch.no_grad():
+            agent.log_alpha.copy_(loaded_log_alpha)
 
     train_state_path = os.path.join(dir_path, 'sac_train_state.pt')
     if os.path.exists(train_state_path):
@@ -389,7 +421,8 @@ def load_checkpoint(agent, dir_path):
         agent.actor_optimizer.load_state_dict(state['actor_optimizer'])
         agent.critic1_optimizer.load_state_dict(state['critic1_optimizer'])
         agent.critic2_optimizer.load_state_dict(state['critic2_optimizer'])
-        agent.alpha_optimizer.load_state_dict(state['alpha_optimizer'])
+        if agent.alpha_optimizer is not None and 'alpha_optimizer' in state:
+            agent.alpha_optimizer.load_state_dict(state['alpha_optimizer'])
         agent.total_steps = state['total_steps']
     else:
         # Checkpoints saved by older versions of this script (or migrated by
@@ -407,7 +440,6 @@ def load_checkpoint(agent, dir_path):
 if __name__ == "__main__":
     N_ENVS = 8
     max_steps = int(2000000)
-    eval_interval = 2000
     state_dim = (4, 84, 84)
     action_dim = 3  # [steer, gas, brake]
 
@@ -419,7 +451,39 @@ if __name__ == "__main__":
     # Leave as None to train from scratch.
     #   RESUME_FROM = 'last'
     #   RESUME_FROM = 'best'
-    RESUME_FROM = 'last'
+    #   RESUME_FROM = None
+    RESUME_FROM = 'best'
+
+    # ---- Fine-tuning phase ------------------------------------------------
+    # The from-scratch run did NOT plateau cleanly -- it peaked at eval
+    # AvgReturn ~905 near step 556k (that's what best/ holds), then spent the
+    # next ~1M steps slowly degrading: mean AvgReturn fell 706 (400-700k) ->
+    # 571 (700k-1.1M) -> 517 (1.1M-1.6M), with the last ~60 evals averaging
+    # only ~430 and occasionally collapsing below zero. That is the signature
+    # of too-high LR + a small (10k) replay buffer late in training: the
+    # policy keeps getting knocked off the good solution and cannot hold it,
+    # and continuing from last/ just continues that slide.
+    #
+    # FINETUNE=True resumes from best/ (the 905 policy, not degraded last/)
+    # and switches to gentler settings: lower LR, a frozen low entropy
+    # temperature so exploration stops drifting, a slightly larger replay
+    # buffer, and less frequent but less noisy evals. Set it False to restore
+    # the original from-scratch configuration.
+    FINETUNE = True
+    if FINETUNE:
+        LR = 1e-4                 # was 3e-4
+        FIXED_ALPHA = 0.05        # freeze SAC temperature (auto-tuned value was ~0.06); None keeps auto-tuning
+        BUFFER_SIZE = 15000       # was 10000; the two image buffers cost ~110KB/slot each -> ~3.3GB
+        eval_interval = 4000      # was 2000
+        N_EVALS = 5               # was 3; averages out CarRacing's random-track eval noise
+        FRESH_HISTORY = True      # archive the pre-plateau curve, start a clean fine-tune curve/plot
+    else:
+        LR = 3e-4
+        FIXED_ALPHA = None
+        BUFFER_SIZE = 10000
+        eval_interval = 2000
+        N_EVALS = 3
+        FRESH_HISTORY = False
 
     _t_start = time.time()
 
@@ -433,7 +497,7 @@ if __name__ == "__main__":
     # each of the buffer's `s`/`ns` arrays costs ~110KB per slot, so 1e5 slots
     # needs ~21GB combined -- too much for this machine (16GB RAM, 8 parallel
     # env worker processes also competing for it). 10000 slots costs ~2.2GB.
-    agent = SAC(state_dim, action_dim, buffer_size=10000)
+    agent = SAC(state_dim, action_dim, lr=LR, buffer_size=BUFFER_SIZE, fixed_alpha=FIXED_ALPHA)
     _progress_print(f"agent device: {agent.device}")
 
     # NOTE: resuming only restores network weights + optimizer state + total_steps
@@ -448,6 +512,11 @@ if __name__ == "__main__":
         if os.path.exists(os.path.join(RESUME_FROM, 'sac_actor.pt')):
             load_checkpoint(agent, RESUME_FROM)
             _progress_print(f"resumed from '{RESUME_FROM}' at total_steps={agent.total_steps}")
+            # load_checkpoint restored each optimizer's saved state (which carries
+            # the LR it was trained with), so re-assert the fine-tune LR on top.
+            agent.set_lr(LR)
+            _progress_print(f"applied lr={LR}, fixed_alpha={FIXED_ALPHA}, buffer_size={BUFFER_SIZE}, "
+                             f"eval_interval={eval_interval}, n_evals={N_EVALS}")
         else:
             _progress_print(f"WARNING: RESUME_FROM='{RESUME_FROM}' has no sac_actor.pt -- "
                              f"training from scratch instead.")
@@ -468,6 +537,11 @@ if __name__ == "__main__":
     # the moment the next checkpoint fires.
     history = {'Step': [], 'AvgReturn': []}
     history_path = 'training_history.json'
+    if FRESH_HISTORY and os.path.exists(history_path):
+        archive = f"training_history_pretrain_{int(time.time())}.json"
+        os.rename(history_path, archive)
+        _progress_print(f"FRESH_HISTORY: moved previous curve to {archive}; "
+                         f"starting a clean fine-tune curve/plot")
     if os.path.exists(history_path):
         with open(history_path) as f:
             history = json.load(f)
@@ -512,7 +586,7 @@ if __name__ == "__main__":
                 next_progress += 1000
 
             if agent.total_steps >= next_checkpoint:
-                avg_return = evaluate(agent)
+                avg_return = evaluate(agent, n_evals=N_EVALS)
                 history['Step'].append(agent.total_steps)
                 history['AvgReturn'].append(avg_return)
 
