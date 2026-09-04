@@ -48,12 +48,22 @@ def preprocess(img):
     return img
 
 
+# End an episode after this many consecutive agent-steps with no track progress
+# (no tile visited -> reward <= 0). ~50 steps = skip_frames*50 = 200 env frames
+# = 4 simulated seconds of donuts/being stuck. Set to 0 or None to disable.
+MAX_NO_PROGRESS_STEPS = 50
+
+
 class ImageEnv(gym.Wrapper):
-    def __init__(self, env, skip_frames=4, stack_frames=4, initial_no_op=50, **kwargs):
+    def __init__(self, env, skip_frames=4, stack_frames=4, initial_no_op=50,
+                 max_no_progress_steps=MAX_NO_PROGRESS_STEPS, **kwargs):
         super(ImageEnv, self).__init__(env, **kwargs)
         self.initial_no_op = initial_no_op
         self.skip_frames = skip_frames
         self.stack_frames = stack_frames
+        # No-progress guard (0/None disables). See the note in step().
+        self.max_no_progress_steps = max_no_progress_steps
+        self.no_progress_steps = 0
 
         if isinstance(env.action_space, gym.spaces.Box):
             self.no_op_action = np.zeros(env.action_space.shape, dtype=np.float32)
@@ -74,6 +84,7 @@ class ImageEnv(gym.Wrapper):
             s, r, terminated, truncated, info = self.env.step(self.no_op_action)
         s = preprocess(s)
         self.stacked_state = np.tile(s, (self.stack_frames, 1, 1))  # [4, 84, 84]
+        self.no_progress_steps = 0
         return self.stacked_state, info
 
     def step(self, action):
@@ -85,6 +96,23 @@ class ImageEnv(gym.Wrapper):
                 break
         s = preprocess(s)
         self.stacked_state = np.concatenate((self.stacked_state[1:], s[np.newaxis]), axis=0)
+
+        # No-progress guard: CarRacing only pays a positive step reward when a new
+        # track tile is visited (+1000/N per tile vs. -0.1 per frame), so a run of
+        # agent-steps with reward <= 0 means the car is off-track, stopped, or
+        # spinning in place. Cut the episode instead of letting it burn the full
+        # ~1000 steps doing donuts -- keeps that garbage out of the replay buffer
+        # and speeds up training/eval. Flagged as `terminated` (not `truncated`)
+        # on purpose: we want the critic to treat "stuck" as a near-zero-value
+        # dead end, not bootstrap a fresh-episode value through the vec-env
+        # auto-reset (which would happen with done=0).
+        if reward > 0:
+            self.no_progress_steps = 0
+        else:
+            self.no_progress_steps += 1
+        if self.max_no_progress_steps and self.no_progress_steps >= self.max_no_progress_steps:
+            terminated = True
+
         return self.stacked_state, reward, terminated, truncated, info
 
 
@@ -439,7 +467,7 @@ def load_checkpoint(agent, dir_path):
 
 if __name__ == "__main__":
     N_ENVS = 8
-    max_steps = int(2000000)
+    max_steps = int(20000000)
     state_dim = (4, 84, 84)
     action_dim = 3  # [steer, gas, brake]
 
@@ -490,7 +518,8 @@ if __name__ == "__main__":
     def _progress_print(msg):
         print(f"[{time.time() - _t_start:8.1f}s] {msg}", flush=True)
 
-    _progress_print(f"=== PARALLEL TRAINING START (max_steps={max_steps}, N_ENVS={N_ENVS}) ===")
+    _progress_print(f"=== PARALLEL TRAINING START (max_steps={max_steps}, N_ENVS={N_ENVS}, "
+                    f"max_no_progress_steps={MAX_NO_PROGRESS_STEPS}) ===")
 
     vec_env = AsyncVectorEnv([make_env for _ in range(N_ENVS)])
     # buffer_size lowered from the 1e5 default: with state_dim=(4,84,84) float32,

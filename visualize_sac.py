@@ -35,6 +35,13 @@ def preprocess(img):
     img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY) / 255.0
     return img
 
+
+# End an episode after this many consecutive agent-steps with no track progress
+# (no tile visited -> reward <= 0): ~50 steps = skip_frames*50 = 200 env frames
+# = 4 simulated seconds of donuts/being stuck. Same guard as train_sac_parallel.py
+# so recorded videos reflect the same episode rules training used. 0/None disables.
+MAX_NO_PROGRESS_STEPS = 50
+
 class ImageEnv(gym.Wrapper):
     def __init__(
         self,
@@ -42,12 +49,16 @@ class ImageEnv(gym.Wrapper):
         skip_frames=4,
         stack_frames=4,
         initial_no_op=50,
+        max_no_progress_steps=MAX_NO_PROGRESS_STEPS,
         **kwargs
     ):
         super(ImageEnv, self).__init__(env, **kwargs)
         self.initial_no_op = initial_no_op
         self.skip_frames = skip_frames
         self.stack_frames = stack_frames
+        # No-progress guard (0/None disables). See the note in step().
+        self.max_no_progress_steps = max_no_progress_steps
+        self.no_progress_steps = 0
 
         # SAC uses the continuous action space (Box), while the earlier discrete
         # agents used action `0` as a no-op. Build a no-op action that works for both.
@@ -69,6 +80,7 @@ class ImageEnv(gym.Wrapper):
 
         # The initial observation is simply a copy of the frame `s`
         self.stacked_state = np.tile(s, (self.stack_frames, 1, 1))  # [4, 84, 84]
+        self.no_progress_steps = 0
         return self.stacked_state, info
 
     def step(self, action):
@@ -86,6 +98,18 @@ class ImageEnv(gym.Wrapper):
 
         # Push the current frame `s` at the end of self.stacked_state
         self.stacked_state = np.concatenate((self.stacked_state[1:], s[np.newaxis]), axis=0)
+
+        # No-progress guard: CarRacing only pays a positive step reward when a new
+        # track tile is visited, so a run of agent-steps with reward <= 0 means the
+        # car is off-track, stopped, or spinning in place. End the episode (flagged
+        # `terminated`) instead of recording the full ~1000 steps of donuts. Matches
+        # the guard in train_sac_parallel.py's ImageEnv.
+        if reward > 0:
+            self.no_progress_steps = 0
+        else:
+            self.no_progress_steps += 1
+        if self.max_no_progress_steps and self.no_progress_steps >= self.max_no_progress_steps:
+            terminated = True
 
         return self.stacked_state, reward, terminated, truncated, info
 
@@ -324,7 +348,7 @@ matplotlib.rcParams['animation.ffmpeg_path'] = imageio_ffmpeg.get_ffmpeg_exe()
 
 
 def show_video_of_model(agent, env_name, actor_path='sac_actor.pt', out_path='CarRacing-v2-SAC.mp4',
-                         max_seconds=40, skip_frames=4):
+                         max_seconds=40, skip_frames=4, max_no_progress_steps=MAX_NO_PROGRESS_STEPS):
     # CarRacing-v2 physics run at metadata['render_fps'] (50) steps/sec. The
     # registry default max_episode_steps=1000 caps any episode at 1000/50 = 20
     # simulated seconds, regardless of playback fps -- so to actually get
@@ -337,7 +361,8 @@ def show_video_of_model(agent, env_name, actor_path='sac_actor.pt', out_path='Ca
 
     eval_env = gym.make(env_name, continuous=True, render_mode='rgb_array',
                          max_episode_steps=max_episode_steps)
-    eval_env = ImageEnv(eval_env, skip_frames=skip_frames)
+    eval_env = ImageEnv(eval_env, skip_frames=skip_frames,
+                        max_no_progress_steps=max_no_progress_steps)
 
     agent.actor.load_state_dict(torch.load(actor_path, map_location=agent.device))
     agent.actor.eval()
@@ -390,6 +415,10 @@ if __name__ == "__main__":
     parser.add_argument('--actor', default='last/sac_actor.pt', help="path to the saved actor checkpoint (e.g. last/sac_actor.pt or best/sac_actor.pt)")
     parser.add_argument('--out', default='CarRacing-v2-SAC.mp4', help="output video path (.mp4 via bundled imageio-ffmpeg binary; .gif also supported)")
     parser.add_argument('--max-seconds', type=float, default=40, help="max simulated episode length in seconds (raises the env's max_episode_steps accordingly)")
+    parser.add_argument('--no-progress-steps', type=int, default=MAX_NO_PROGRESS_STEPS,
+                        help="end the episode after this many agent-steps with no track progress "
+                             "(spinning/stuck). 0 disables, so the car is recorded until it "
+                             "crashes or hits --max-seconds.")
     args = parser.parse_args()
 
     state_dim = (4, 84, 84)
@@ -398,7 +427,8 @@ if __name__ == "__main__":
     agent = SAC(state_dim, action_dim)
 
     try:
-        show_video_of_model(agent, 'CarRacing-v2', actor_path=args.actor, out_path=args.out, max_seconds=args.max_seconds)
+        show_video_of_model(agent, 'CarRacing-v2', actor_path=args.actor, out_path=args.out,
+                            max_seconds=args.max_seconds, max_no_progress_steps=args.no_progress_steps)
     except FileNotFoundError:
         print(f"ERROR: checkpoint '{args.actor}' not found. Train first, or pass --actor <path>.", file=sys.stderr)
         sys.exit(1)
