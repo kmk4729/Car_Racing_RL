@@ -406,7 +406,7 @@ def load_checkpoint(agent, dir_path):
 
 if __name__ == "__main__":
     N_ENVS = 8
-    max_steps = int(200000)
+    max_steps = int(2000000)
     eval_interval = 2000
     state_dim = (4, 84, 84)
     action_dim = 3  # [steer, gas, brake]
